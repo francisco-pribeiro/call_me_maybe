@@ -70,6 +70,7 @@ def extract_parameters(
     state = KEY_CONTENT
     current_key = ""
     current_value = ""
+    value_token_ids: list[int] = []
     param_keys = list(fn_def.parameters.keys())
     key_index = 0
 
@@ -148,6 +149,7 @@ def extract_parameters(
 
         elif state == COLON:
             current_value = ""
+            value_token_ids = []
             param_type = fn_def.parameters[curr_key].type
             state = VALUE_NUMBER if param_type == "number" else VALUE_CLOSE
 
@@ -168,8 +170,7 @@ def extract_parameters(
         elif state == VALUE_STRING:
             if '"' in next_token_str:
                 quote_pos = next_token_str.index('"')
-                current_value += next_token_str[:quote_pos]
-                result[curr_key] = current_value
+                result[curr_key] = model.decode(value_token_ids)
                 remainder = next_token_str[quote_pos + 1:]
                 if '}' in remainder:
                     return result
@@ -180,7 +181,7 @@ def extract_parameters(
                 else:
                     state = COMMA_OR_END
             else:
-                current_value += next_token_str
+                value_token_ids.append(next_token_id)
 
         elif state == COMMA_OR_END:
             if next_token_str == ",":
