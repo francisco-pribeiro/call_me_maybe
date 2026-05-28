@@ -1,4 +1,4 @@
-from llm_sdk import Small_LLM_Model  # type: ignore
+from llm_sdk import Small_LLM_Model  # type: ignore[attr-defined]
 from src.vocab import VocabHelper
 
 MAX_TOKENS: int = 200
@@ -20,4 +20,3 @@ def generate(
             break
 
     return generated
-

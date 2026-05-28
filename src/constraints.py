@@ -1,4 +1,4 @@
-from llm_sdk import Small_LLM_Model  #type: ignore
+from llm_sdk import Small_LLM_Model  # type: ignore[attr-defined]
 from src.vocab import VocabHelper
 from src.models import FunctionDefinition
 
@@ -21,7 +21,6 @@ def get_valid_name_tokens(
         function_names: list[str],
         vocab: VocabHelper,
         ) -> set[int]:
-    
     valid_token_ids = set()
     for token_id, token_str in vocab.id_to_token.items():
         candidate = current_prefix + token_str
@@ -38,25 +37,26 @@ def select_function(
         functions: list[FunctionDefinition],
         vocab: VocabHelper,
         ) -> FunctionDefinition:
-    
     f_names = []
     for f in functions:
         f_names.append(f.name)
 
     current_prefix = ""
-    
+
     for _ in range(MAX_TOKENS):
         logits = model.get_logits_from_input_ids(input_ids)
         valid_token_ids: set[int] = get_valid_name_tokens(current_prefix, f_names, vocab)
-        masked_logits = [logits[i] if i in valid_token_ids else float("-inf") for i in range(len(logits))]
+        masked_logits = [
+            logits[i] if i in valid_token_ids else float("-inf")
+            for i in range(len(logits))
+        ]
         next_token_id = masked_logits.index(max(masked_logits))
         next_token_str = vocab.id_to_token[next_token_id]
         current_prefix += next_token_str
-        input_ids = input_ids +  [next_token_id]
+        input_ids = input_ids + [next_token_id]
         if current_prefix in f_names:
             return next(f for f in functions if f.name == current_prefix)
     raise ValueError(f"Could not select a function name within {MAX_TOKENS} tokens")
-
 
 
 def extract_parameters(
@@ -67,7 +67,7 @@ def extract_parameters(
         ) -> dict[str, str | float]:
 
     result: dict[str, str | float] = {}
-    state = KEY_CONTENT
+    state = START
     current_key = ""
     current_value = ""
     value_token_ids: list[int] = []
@@ -75,13 +75,15 @@ def extract_parameters(
     key_index = 0
 
     # precompute token sets once
-    numeric_tokens = vocab.get_tokens_matching_chars({"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "-"})
+    numeric_tokens = vocab.get_tokens_matching_chars(
+        {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "-"}
+    )
     quote_tokens = vocab.get_tokens_matching_exact('"')
     open_brace_tokens = vocab.get_tokens_matching_exact("{")
     close_brace_tokens = vocab.get_tokens_matching_exact("}")
     colon_tokens = vocab.get_tokens_matching_exact(":")
     comma_tokens = vocab.get_tokens_matching_exact(",")
-    string_tokens = set(vocab.id_to_token.keys()) - colon_tokens
+    string_tokens = set(vocab.id_to_token.keys()) - quote_tokens
 
     for _ in range(MAX_TOKENS):
         curr_key = param_keys[key_index]
@@ -126,7 +128,10 @@ def extract_parameters(
             break
 
         # apply mask and pick next token
-        masked_logits = [logits[i] if i in valid_tokens else float("-inf") for i in range(len(logits))]
+        masked_logits = [
+            logits[i] if i in valid_tokens else float("-inf")
+            for i in range(len(logits))
+        ]
         next_token_id = masked_logits.index(max(masked_logits))
         next_token_str = vocab.id_to_token[next_token_id]
         input_ids = input_ids + [next_token_id]

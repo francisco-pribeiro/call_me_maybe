@@ -17,3 +17,8 @@ members = [
 
 [tool.uv.sources]
 llm-sdk = { workspace = true, editable = true }
+
+[dependency-groups]
+dev = [
+    "mypy>=2.1.0",
+]

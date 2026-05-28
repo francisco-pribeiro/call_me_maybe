@@ -1,6 +1,6 @@
 from llm_sdk import Small_LLM_Model  # type: ignore
 from src.vocab import VocabHelper
-from pydantic import ValidationError
+from pydantic import ValidationError  # type: ignore
 from src.models import FunctionDefinition, FunctionCall
 from src.constraints import select_function, extract_parameters
 from src.prompt import build_name_prompt, build_params_prompt
@@ -10,7 +10,7 @@ import os
 import sys
 
 
-def main():
+def main() -> None:
 
     # 1. create a parser
     parser = argparse.ArgumentParser()
@@ -81,7 +81,6 @@ def main():
     os.makedirs(os.path.dirname(args.output), exist_ok=True)
     with open(args.output, "w") as f:
         json.dump([fc.model_dump() for fc in function_calls], f, indent=2)
-
 
 
 if __name__ == "__main__":
