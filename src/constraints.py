@@ -64,19 +64,23 @@ def extract_parameters(
         input_ids: list[int],
         fn_def: FunctionDefinition,
         vocab: VocabHelper,
-        ) -> dict[str, str | float]:
+        ) -> dict[str, str | int | float]:
 
-    result: dict[str, str | float] = {}
+    result: dict[str, str | int | float] = {}
     state = START
     current_key = ""
     current_value = ""
     value_token_ids: list[int] = []
     param_keys = list(fn_def.parameters.keys())
     key_index = 0
+    param_type = ""
 
     # precompute token sets once
     numeric_tokens = vocab.get_tokens_matching_chars(
         {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "-"}
+    )
+    integer_tokens = vocab.get_tokens_matching_chars(
+        {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-"}
     )
     quote_tokens = vocab.get_tokens_matching_exact('"')
     open_brace_tokens = vocab.get_tokens_matching_exact("{")
@@ -110,7 +114,12 @@ def extract_parameters(
             valid_tokens = colon_tokens
 
         elif state == VALUE_NUMBER:
-            valid_tokens = numeric_tokens | comma_tokens | close_brace_tokens
+            if key_index < len(param_keys) - 1:
+                terminator_tokens = comma_tokens
+            else:
+                terminator_tokens = close_brace_tokens
+            digit_tokens = integer_tokens if param_type == "integer" else numeric_tokens
+            valid_tokens = digit_tokens | terminator_tokens
 
         elif state == VALUE_STRING:
             valid_tokens = string_tokens
@@ -156,18 +165,18 @@ def extract_parameters(
             current_value = ""
             value_token_ids = []
             param_type = fn_def.parameters[curr_key].type
-            state = VALUE_NUMBER if param_type == "number" else VALUE_CLOSE
+            state = VALUE_NUMBER if param_type in ("number", "integer") else VALUE_CLOSE
 
         elif state == VALUE_CLOSE:
             state = VALUE_STRING
 
         elif state == VALUE_NUMBER:
             if next_token_str == ",":
-                result[curr_key] = float(current_value)
+                result[curr_key] = int(current_value) if param_type == "integer" else float(current_value)
                 key_index += 1
                 state = KEY_OPEN
             elif next_token_str == "}":
-                result[curr_key] = float(current_value)
+                result[curr_key] = int(current_value) if param_type == "integer" else float(current_value)
                 return result
             else:
                 current_value += next_token_str
@@ -179,7 +188,7 @@ def extract_parameters(
                 remainder = next_token_str[quote_pos + 1:]
                 if '}' in remainder:
                     return result
-                elif ',' in remainder:
+                elif ',' in remainder and key_index < len(param_keys) - 1:
                     key_index += 1
                     current_key = ""
                     state = KEY_CONTENT if '"' in remainder else KEY_OPEN

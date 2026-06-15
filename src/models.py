@@ -15,4 +15,4 @@ class FunctionDefinition(BaseModel):
 class FunctionCall(BaseModel):
     prompt: str
     name: str
-    parameters: dict[str, str | float]
+    parameters: dict[str, str | int | float]

@@ -9,3 +9,12 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Caches
+.mypy_cache/
+
+# Generated output
+data/output/
+
+# Grading tool (not part of the project)
+moulinette/
