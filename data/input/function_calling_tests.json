@@ -1,18 +1,18 @@
 [
   {
-    "prompt": "What is the sum of -2 and -4?"
+    "prompt": "What is the sum of 2 and 3?"
   },
   {
-    "prompt": "What is the sum of 265 and -345?"
+    "prompt": "What is the sum of 265 and 345?"
   },
   {
-    "prompt": "Greet everyone you know"
+    "prompt": "Greet shrek"
   },
   {
-    "prompt": "Greet 123"
+    "prompt": "Greet john"
   },
   {
-    "prompt": "Reverse the string hello"
+    "prompt": "Reverse the string 'hello'"
   },
   {
     "prompt": "Reverse the string 'world'"
@@ -24,12 +24,12 @@
     "prompt": "Calculate the square root of 144"
   },
   {
-    "prompt": "Replace all numbers in \"Hello 34 I'm 233 years 09\" with NUMBERS"
+    "prompt": "Replace all numbers in \"Hello 34 I'm 233 years old\" with NUMBERS"
   },
   {
     "prompt": "Replace all vowels in 'Programming is fun' with asterisks"
   },
   {
-    "prompt": "Substitute the word 'cat' with dog in 'The cat sat on the mat with another cat'"
+    "prompt": "Substitute the word 'cat' with 'dog' in 'The cat sat on the mat with another cat'"
   }
 ]
