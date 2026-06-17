@@ -1,5 +1,9 @@
 *This project has been created as part of the 42 curriculum by fdinis-d.*
 
+<p align="center">
+  <img src="assets/banner.jpg" alt="Hooded figures worshipping the Transformer architecture diagram" width="600">
+</p>
+
 # call_me_maybe
 
 ## Description
