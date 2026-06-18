@@ -11,7 +11,7 @@ KEY_CLOSE = "KEY_CLOSE"
 COLON = "COLON"
 VALUE_NUMBER = "VALUE_NUMBER"
 VALUE_STRING = "VALUE_STRING"
-VALUE_CLOSE = "VALUE_CLOSE"
+VALUE_STRING_OPEN = "VALUE_STRING_OPEN"
 COMMA_OR_END = "COMMA_OR_END"
 END = "END"
 
@@ -24,8 +24,10 @@ def get_valid_name_tokens(
     valid_token_ids = set()
     for token_id, token_str in vocab.id_to_token.items():
         candidate = current_prefix + token_str
+        # keep the token only if the candidate is still a prefix of (or equal
+        # to) some function name — never allow it to overshoot the name's end
         for f in function_names:
-            if f.startswith(candidate) or candidate.startswith(f):
+            if f.startswith(candidate):
                 valid_token_ids.add(token_id)
                 break
     return valid_token_ids
@@ -46,6 +48,8 @@ def select_function(
     for _ in range(MAX_TOKENS):
         logits = model.get_logits_from_input_ids(input_ids)
         valid_token_ids: set[int] = get_valid_name_tokens(current_prefix, f_names, vocab)
+        if not valid_token_ids:
+            raise ValueError(f"No valid token can extend prefix {current_prefix!r}")
         masked_logits = [
             logits[i] if i in valid_token_ids else float("-inf")
             for i in range(len(logits))
@@ -124,7 +128,7 @@ def extract_parameters(
         elif state == VALUE_STRING:
             valid_tokens = string_tokens
 
-        elif state == VALUE_CLOSE:
+        elif state == VALUE_STRING_OPEN:
             valid_tokens = quote_tokens
 
         elif state == COMMA_OR_END:
@@ -165,26 +169,39 @@ def extract_parameters(
             current_value = ""
             value_token_ids = []
             param_type = fn_def.parameters[curr_key].type
-            state = VALUE_NUMBER if param_type in ("number", "integer") else VALUE_CLOSE
+            state = VALUE_NUMBER if param_type in ("number", "integer") else VALUE_STRING_OPEN
 
-        elif state == VALUE_CLOSE:
+        elif state == VALUE_STRING_OPEN:
             state = VALUE_STRING
 
         elif state == VALUE_NUMBER:
-            if next_token_str == ",":
-                result[curr_key] = int(current_value) if param_type == "integer" else float(current_value)
-                key_index += 1
-                state = KEY_OPEN
-            elif next_token_str == "}":
-                result[curr_key] = int(current_value) if param_type == "integer" else float(current_value)
-                return result
+            # a terminator (',' or '}') means the number is complete
+            if next_token_str in (",", "}"):
+                result[curr_key] = (
+                    int(current_value)
+                    if param_type == "integer"
+                    else float(current_value)
+                )
+                if next_token_str == ",":      # another param follows
+                    key_index += 1
+                    state = KEY_OPEN
+                else:                          # '}' -> this was the last param
+                    return result
+            # still generating the number
             else:
                 current_value += next_token_str
 
         elif state == VALUE_STRING:
             if '"' in next_token_str:
                 quote_pos = next_token_str.index('"')
-                result[curr_key] = model.decode(value_token_ids)
+                # if the closing token has content before the quote, keep it
+                # (best-effort: raw slice may carry a BPE space marker)
+                if quote_pos > 0:
+                    result[curr_key] = (
+                        model.decode(value_token_ids) + next_token_str[:quote_pos]
+                    )
+                else:
+                    result[curr_key] = model.decode(value_token_ids)
                 remainder = next_token_str[quote_pos + 1:]
                 if '}' in remainder:
                     return result

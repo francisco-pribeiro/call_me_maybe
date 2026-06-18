@@ -86,8 +86,8 @@ Once the function is known, we generate its parameters as JSON. This is driven b
 
 ```
 START → KEY_OPEN → KEY_CONTENT → KEY_CLOSE → COLON →
-        VALUE_NUMBER  ───┐
-        VALUE_CLOSE → VALUE_STRING → VALUE_CLOSE  → COMMA_OR_END → (KEY_OPEN | END)
+        VALUE_NUMBER ──────────────────────────┐
+        VALUE_STRING_OPEN → VALUE_STRING ───────┴→ COMMA_OR_END → (KEY_OPEN | END)
 ```
 
 For each state, we know exactly which tokens are allowed:
@@ -100,8 +100,8 @@ For each state, we know exactly which tokens are allowed:
 | `KEY_CLOSE`     | `"`                                                                       |
 | `COLON`         | `:`                                                                       |
 | `VALUE_NUMBER`  | digits, `.`, `-`, `,`, `}`                                                |
+| `VALUE_STRING_OPEN` | `"` (the opening quote of a string value)                              |
 | `VALUE_STRING`  | every token **except** `"` (the closing quote is detected via partial-token match) |
-| `VALUE_CLOSE`   | `"`                                                                       |
 | `COMMA_OR_END`  | `,` if more parameters remain, else `}`                                   |
 
 A strict invariant in the loop is:

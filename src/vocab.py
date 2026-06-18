@@ -10,6 +10,8 @@ class VocabHelper:
             self.token_to_id = json.load(f)
         self.id_to_token = {v: k for k, v in self.token_to_id.items()}
 
+    # Return every token whose characters are all within allowed_chars
+    # (e.g. all-numeric tokens). Used to build value masks
     def get_tokens_matching_chars(self, allowed_chars: set[str]) -> set[int]:
         allowed_ids = set()
         for token, token_id in self.token_to_id.items():
@@ -17,8 +19,8 @@ class VocabHelper:
                 allowed_ids.add(token_id)
         return allowed_ids
 
+    # Return the token(s) that are exactly the given string
+    # (e.g. the bare '"', '{', ':' tokens). Used for structural masks.
     def get_tokens_matching_exact(self, allowed_char: str) -> set[int]:
-        return {
-            token_id for token, token_id in self.token_to_id.items()
-            if token == allowed_char
-        }
+        token_id = self.token_to_id.get(allowed_char)
+        return {token_id} if token_id is not None else set()

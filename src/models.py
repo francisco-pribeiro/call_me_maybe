@@ -16,3 +16,7 @@ class FunctionCall(BaseModel):
     prompt: str
     name: str
     parameters: dict[str, str | int | float]
+
+
+class PromptItem(BaseModel):
+    prompt: str

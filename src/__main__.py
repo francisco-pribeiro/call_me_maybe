@@ -1,7 +1,7 @@
 from llm_sdk import Small_LLM_Model  # type: ignore
 from src.vocab import VocabHelper
-from pydantic import ValidationError  # type: ignore
-from src.models import FunctionDefinition, FunctionCall
+from pydantic import ValidationError
+from src.models import FunctionDefinition, FunctionCall, PromptItem
 from src.constraints import select_function, extract_parameters
 from src.prompt import build_name_prompt, build_params_prompt
 import argparse
@@ -34,12 +34,15 @@ def main() -> None:
         if not isinstance(data, list):
             print(f"Error: expected a JSON array in: {args.input}")
             sys.exit(1)
-        prompts = [item["prompt"] for item in data]
+        prompts = [PromptItem.model_validate(item).prompt for item in data]
     except FileNotFoundError:
         print(f"Error: file not found: {args.input}")
         sys.exit(1)
     except json.JSONDecodeError:
         print(f"Error: invalid JSON in: {args.input}")
+        sys.exit(1)
+    except ValidationError as e:
+        print(f"Error: invalid prompt structure in {args.input}: {e}")
         sys.exit(1)
 
     # Load functions
@@ -67,6 +70,7 @@ def main() -> None:
     for prompt in prompts:
         try:
             context = build_name_prompt(prompt, functions)
+            # return a 2D tensor
             input_ids = model.encode(context).tolist()[0]
             function = select_function(model, input_ids, functions, vocab)
             context_param = build_params_prompt(prompt, functions, function.name)
@@ -78,7 +82,9 @@ def main() -> None:
             print(f"Warning: skipping prompt '{prompt}': {e}")
             continue
 
-    os.makedirs(os.path.dirname(args.output), exist_ok=True)
+    out_dir = os.path.dirname(args.output)
+    if out_dir:  # skip when output is a bare filename (current directory)
+        os.makedirs(out_dir, exist_ok=True)
     with open(args.output, "w") as f:
         json.dump([fc.model_dump() for fc in function_calls], f, indent=2)
 
