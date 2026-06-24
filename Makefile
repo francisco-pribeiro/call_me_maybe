@@ -4,6 +4,9 @@ install:
 run:
 	uv run python -m src
 
+run-large:
+	uv run python -m src --model=Qwen/Qwen3-1.7B
+
 debug:
 	uv run python -m pdb -m src
 

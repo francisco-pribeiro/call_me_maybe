@@ -23,6 +23,7 @@ def main() -> None:
     parser.add_argument("--input", default="data/input/function_calling_tests.json")
     parser.add_argument("--output", default="data/output/function_calling_results.json")
     parser.add_argument("--functions_definition", default="data/input/functions_definition.json")
+    parser.add_argument("--model", default="Qwen/Qwen3-0.6B")
 
     # 3. parse what the user actually typed
     args = parser.parse_args()
@@ -63,7 +64,7 @@ def main() -> None:
         print(f"Error: invalid function definition structure: {e}")
         sys.exit(1)
 
-    model = Small_LLM_Model()
+    model = Small_LLM_Model(args.model)
     vocab = VocabHelper(model)
     function_calls = []
 
