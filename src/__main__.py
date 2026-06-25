@@ -79,7 +79,13 @@ def main() -> None:
         print(f"Error: invalid function definition structure: {e}")
         sys.exit(1)
 
-    model = Small_LLM_Model(args.model)
+    # safety for imvalid model names
+    try:
+        model = Small_LLM_Model(args.model)
+    except Exception as e:
+        print(f"Error: could not load model {args.model!r}: {e}")
+        sys.exit(1)
+
     vocab = VocabHelper(model)
     function_calls = []
 
