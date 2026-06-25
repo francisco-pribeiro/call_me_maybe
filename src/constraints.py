@@ -1,3 +1,4 @@
+import sys
 from llm_sdk import Small_LLM_Model  # type: ignore[attr-defined]
 from src.vocab import VocabHelper
 from src.models import FunctionDefinition
@@ -38,6 +39,7 @@ def select_function(
         input_ids: list[int],
         functions: list[FunctionDefinition],
         vocab: VocabHelper,
+        verbose: bool = False,
         ) -> FunctionDefinition:
     f_names = []
     for f in functions:
@@ -45,11 +47,15 @@ def select_function(
 
     current_prefix = ""
 
-    for _ in range(MAX_TOKENS):
+    for i in range(1, MAX_TOKENS + 1):
         logits = model.get_logits_from_input_ids(input_ids)
-        valid_token_ids: set[int] = get_valid_name_tokens(current_prefix, f_names, vocab)
+        valid_token_ids: set[int] = get_valid_name_tokens(
+            current_prefix, f_names, vocab
+        )
         if not valid_token_ids:
-            raise ValueError(f"No valid token can extend prefix {current_prefix!r}")
+            raise ValueError(
+                f"No valid token can extend prefix {current_prefix!r}"
+            )
         masked_logits = [
             logits[i] if i in valid_token_ids else float("-inf")
             for i in range(len(logits))
@@ -57,10 +63,18 @@ def select_function(
         next_token_id = masked_logits.index(max(masked_logits))
         next_token_str = vocab.id_to_token[next_token_id]
         current_prefix += next_token_str
+        if verbose:
+            print(
+                f"[token {i}] -> {next_token_str!r} "
+                f"|| curr_prefix={current_prefix!r}",
+                file=sys.stderr
+            )
         input_ids = input_ids + [next_token_id]
         if current_prefix in f_names:
             return next(f for f in functions if f.name == current_prefix)
-    raise ValueError(f"Could not select a function name within {MAX_TOKENS} tokens")
+    raise ValueError(
+        f"Could not select a function name within {MAX_TOKENS} tokens"
+    )
 
 
 def extract_parameters(
@@ -68,6 +82,7 @@ def extract_parameters(
         input_ids: list[int],
         fn_def: FunctionDefinition,
         vocab: VocabHelper,
+        verbose: bool = False,
         ) -> dict[str, str | int | float]:
 
     result: dict[str, str | int | float] = {}
@@ -93,7 +108,7 @@ def extract_parameters(
     comma_tokens = vocab.get_tokens_matching_exact(",")
     string_tokens = set(vocab.id_to_token.keys()) - quote_tokens
 
-    for _ in range(MAX_TOKENS):
+    for i in range(1, MAX_TOKENS + 1):
         curr_key = param_keys[key_index]
         logits = model.get_logits_from_input_ids(input_ids)
 
@@ -108,7 +123,10 @@ def extract_parameters(
             valid_tokens = set()
             for token_id, token_str in vocab.id_to_token.items():
                 candidate = current_key + token_str
-                if curr_key.startswith(candidate) or candidate.startswith(curr_key):
+                if (
+                    curr_key.startswith(candidate)
+                    or candidate.startswith(curr_key)
+                ):
                     valid_tokens.add(token_id)
 
         elif state == KEY_CLOSE:
@@ -122,7 +140,11 @@ def extract_parameters(
                 terminator_tokens = comma_tokens
             else:
                 terminator_tokens = close_brace_tokens
-            digit_tokens = integer_tokens if param_type == "integer" else numeric_tokens
+            digit_tokens = (
+                integer_tokens
+                if param_type == "integer"
+                else numeric_tokens
+            )
             valid_tokens = digit_tokens | terminator_tokens
 
         elif state == VALUE_STRING:
@@ -147,6 +169,11 @@ def extract_parameters(
         ]
         next_token_id = masked_logits.index(max(masked_logits))
         next_token_str = vocab.id_to_token[next_token_id]
+        if verbose:
+            print(
+                f"[param {i}] -> state={state:17} + {next_token_str!r}",
+                file=sys.stderr
+            )
         input_ids = input_ids + [next_token_id]
 
         # BOTTOM: all state transitions happen here, after token is picked
@@ -169,7 +196,11 @@ def extract_parameters(
             current_value = ""
             value_token_ids = []
             param_type = fn_def.parameters[curr_key].type
-            state = VALUE_NUMBER if param_type in ("number", "integer") else VALUE_STRING_OPEN
+            state = (
+                VALUE_NUMBER
+                if param_type in ("number", "integer")
+                else VALUE_STRING_OPEN
+            )
 
         elif state == VALUE_STRING_OPEN:
             state = VALUE_STRING
@@ -198,7 +229,8 @@ def extract_parameters(
                 # (best-effort: raw slice may carry a BPE space marker)
                 if quote_pos > 0:
                     result[curr_key] = (
-                        model.decode(value_token_ids) + next_token_str[:quote_pos]
+                        model.decode(value_token_ids)
+                        + next_token_str[:quote_pos]
                     )
                 else:
                     result[curr_key] = model.decode(value_token_ids)
@@ -221,4 +253,6 @@ def extract_parameters(
             else:
                 return result
 
-    raise ValueError(f"Could not extract parameters within {MAX_TOKENS} tokens")
+    raise ValueError(
+        f"Could not extract parameters within {MAX_TOKENS} tokens"
+    )

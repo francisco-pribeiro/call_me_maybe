@@ -20,10 +20,20 @@ def main() -> None:
     # directory and write output to the data/output/ directory. You
     # can optionally specify custom paths using the --input and --output
     # arguments. For example:
-    parser.add_argument("--input", default="data/input/function_calling_tests.json")
-    parser.add_argument("--output", default="data/output/function_calling_results.json")
-    parser.add_argument("--functions_definition", default="data/input/functions_definition.json")
+    parser.add_argument(
+        "--input",
+        default="data/input/function_calling_tests.json",
+    )
+    parser.add_argument(
+        "--output",
+        default="data/output/function_calling_results.json",
+    )
+    parser.add_argument(
+        "--functions_definition",
+        default="data/input/functions_definition.json",
+    )
     parser.add_argument("--model", default="Qwen/Qwen3-0.6B")
+    parser.add_argument("--verbose", action="store_true")
 
     # 3. parse what the user actually typed
     args = parser.parse_args()
@@ -51,7 +61,10 @@ def main() -> None:
         with open(args.functions_definition) as f:
             data = json.load(f)
         if not isinstance(data, list):
-            print(f"Error: expected a JSON array in: {args.functions_definition}")
+            print(
+                "Error: expected a JSON array in: "
+                f"{args.functions_definition}"
+            )
             sys.exit(1)
         functions = [FunctionDefinition.model_validate(item) for item in data]
     except FileNotFoundError:
@@ -68,16 +81,34 @@ def main() -> None:
     vocab = VocabHelper(model)
     function_calls = []
 
-    for prompt in prompts:
+    for i, prompt in enumerate(prompts, 1):
+        if args.verbose:
+            print(
+                f"\n\033[34m=== Prompt {i}: {prompt!r} ===\033[0m",
+                file=sys.stderr
+            )
+            print("Function Name", file=sys.stderr)
         try:
             context = build_name_prompt(prompt, functions)
             # return a 2D tensor
             input_ids = model.encode(context).tolist()[0]
-            function = select_function(model, input_ids, functions, vocab)
-            context_param = build_params_prompt(prompt, functions, function.name)
+            function = select_function(
+                model, input_ids, functions, vocab, verbose=args.verbose
+            )
+            if args.verbose:
+                print("\nExtract Parameters", file=sys.stderr)
+            context_param = build_params_prompt(
+                prompt, functions, function.name
+            )
             input_param_ids = model.encode(context_param).tolist()[0]
-            params = extract_parameters(model, input_param_ids, function, vocab)
-            function_call = FunctionCall(prompt=prompt, name=function.name, parameters=params)
+            params = extract_parameters(
+                model, input_param_ids, function, vocab, verbose=args.verbose
+            )
+            function_call = FunctionCall(
+                prompt=prompt,
+                name=function.name,
+                parameters=params,
+            )
             function_calls.append(function_call)
         except ValueError as e:
             print(f"Warning: skipping prompt '{prompt}': {e}")

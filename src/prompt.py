@@ -2,14 +2,12 @@ from src.models import FunctionDefinition
 
 
 def build_name_prompt(prompt: str, functions: list[FunctionDefinition]) -> str:
-    """Build an instruction string that primes the model to output a function name.
-
-    Args:
+    """Args:
         prompt: The user request.
-        functions: The list of candidate function definitions to include as context.
+        functions: The list of candidate fn defs to include as context.
 
     Returns:
-        A formatted instruction string ending with an open quote to prime generation.
+        A formatted instruction ending with an open quote to prime generation.
     """
     instructions: str = (
         f'Given these functions: {functions} For the request: {prompt} '
@@ -23,15 +21,13 @@ def build_params_prompt(
         functions: list[FunctionDefinition],
         function_name: str,
         ) -> str:
-    """Build an instruction string that primes the model to output parameters as JSON.
-
-    Args:
+    """Args:
         prompt: The user request.
-        functions: The list of candidate function definitions to include as context.
+        functions: The list of candidate fns defs to include as context.
         function_name: The already-selected function name.
 
     Returns:
-        A formatted instruction string ending with an open brace to prime JSON generation.
+        A formatted instruction string ending with { to prime JSON generation.
     """
     instructions: str = (
         f'Given these functions: {functions} For the request: {prompt} '

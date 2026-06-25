@@ -1,3 +1,0 @@
-[flake8]
-exclude = .venv, llm_sdk, moulinette
-max-line-length = 100
