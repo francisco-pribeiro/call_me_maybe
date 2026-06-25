@@ -29,10 +29,14 @@ The underlying model is **Qwen3-0.6B**, accessed through a minimal SDK (`llm_sdk
 Requirements: `uv` (Python package manager) and Python 3.12+.
 
 ```sh
-make install   # uv sync — install dependencies
-make run       # run the program on data/input/function_calling_tests.json
-make lint      # flake8 + mypy
-make clean     # remove caches
+make install            # uv sync — install dependencies
+make run                # run on data/input/function_calling_tests.json
+make run-large          # run with the larger Qwen3-1.7B model
+make run-verbose        # run, printing the token-by-token generation trace
+make run-large-verbose  # larger model + trace
+make run-compare        # show unconstrained vs constrained output side by side
+make lint               # flake8 + mypy
+make clean              # remove caches
 ```
 
 By default the program reads:
@@ -50,15 +54,32 @@ uv run python -m src \
   --output data/output/function_calling_results.json
 ```
 
+## Bonus Features
+
+All of the following are implemented and runnable:
+
+- **`--model <hf_repo_id>`** — run any Hugging Face causal-LM with a
+  `vocab.json` tokenizer instead of the default `Qwen/Qwen3-0.6B` (e.g.
+  `--model Qwen/Qwen3-1.7B`). Nothing in the decoder is model-specific; it
+  works through the SDK interface, so swapping the model is one flag.
+- **`--verbose`** — visualizes the generation process on `stderr`: for each
+  prompt it prints every picked token, the running name prefix, and the FSM
+  state, so you can watch the constraint narrow the choices step by step.
+- **`--compare`** — for each prompt, runs the same parameter prompt **without**
+  the constraint mask (plain greedy decoding, `src/baseline.py`) and prints it
+  next to the constrained output. The unconstrained model typically emits
+  malformed JSON, markdown fences, or runaway repetition — a direct
+  demonstration of what the constrained decoder prevents.
+
 ## Resources
 
-Classic references on the topic:
+References I actually used while building this:
 
-- **Outlines** — *Efficient Guided Generation for Large Language Models* (Willard & Louf, 2023): https://arxiv.org/abs/2307.09702
-- **OpenAI function calling docs**: https://platform.openai.com/docs/guides/function-calling
-- **Hugging Face — Constrained beam search**: https://huggingface.co/blog/constrained-beam-search
-- **Qwen3 model card**: https://huggingface.co/Qwen/Qwen3-0.6B
 - **Andrej Karpathy — Let's build the GPT Tokenizer**: https://www.youtube.com/watch?v=zduSFxRajkE (background on tokens and vocabularies)
+- **3Brown1Blue playlist** (Neural networks): https://youtube.com/playlist?list=PLZHQObOWTQDNU6R1_67000Dx_ZCJB-3pi
+- **The Tokenizer Playground (Xenova)** — interactive tokenizer visualizer: https://huggingface.co/spaces/Xenova/the-tokenizer-playground
+- **Attention Is All You Need** (Vaswani et al., 2017): https://research.google/pubs/attention-is-all-you-need/
+- **Hugging Face — small text-generation models** (≤6B, transformers): https://huggingface.co/models?pipeline_tag=text-generation&num_parameters=min:0,max:6B&library=transformers&apps=ollama&sort=trending
 
 ### Use of AI
 
