@@ -11,7 +11,10 @@ run-verbose:
 	uv run python -m src --verbose
 
 run-large-verbose:
-	uv run python -m src --model=Qwn/Qwen3-1.7B --verbose
+	uv run python -m src --model=Qwen/Qwen3-1.7B --verbose
+
+run-compare:
+	uv run python -m src --compare
 
 debug:
 	uv run python -m pdb -m src

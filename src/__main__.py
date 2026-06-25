@@ -4,6 +4,7 @@ from pydantic import ValidationError
 from src.models import FunctionDefinition, FunctionCall, PromptItem
 from src.constraints import select_function, extract_parameters
 from src.prompt import build_name_prompt, build_params_prompt
+from src.baseline import generate_unconstrained
 import argparse
 import json
 import os
@@ -34,6 +35,7 @@ def main() -> None:
     )
     parser.add_argument("--model", default="Qwen/Qwen3-0.6B")
     parser.add_argument("--verbose", action="store_true")
+    parser.add_argument("--compare", action="store_true")
 
     # 3. parse what the user actually typed
     args = parser.parse_args()
@@ -82,11 +84,13 @@ def main() -> None:
     function_calls = []
 
     for i, prompt in enumerate(prompts, 1):
-        if args.verbose:
+        # Verbose and Compare prints
+        if args.verbose or args.compare:
             print(
                 f"\n\033[34m=== Prompt {i}: {prompt!r} ===\033[0m",
                 file=sys.stderr
             )
+        if args.verbose:
             print("Function Name", file=sys.stderr)
         try:
             context = build_name_prompt(prompt, functions)
@@ -95,15 +99,24 @@ def main() -> None:
             function = select_function(
                 model, input_ids, functions, vocab, verbose=args.verbose
             )
+            # Verbose Extract Parameters Print
             if args.verbose:
                 print("\nExtract Parameters", file=sys.stderr)
             context_param = build_params_prompt(
                 prompt, functions, function.name
             )
             input_param_ids = model.encode(context_param).tolist()[0]
+            # Compare raw print
+            if args.compare:
+                raw = generate_unconstrained(
+                    model, input_param_ids, max_tokens=50
+                )
+                print(f"[without constraint] {raw!r}", file=sys.stderr)
             params = extract_parameters(
                 model, input_param_ids, function, vocab, verbose=args.verbose
             )
+            if args.compare:
+                print(f"[with constraint]    {params}", file=sys.stderr)
             function_call = FunctionCall(
                 prompt=prompt,
                 name=function.name,
